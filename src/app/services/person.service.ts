@@ -30,11 +30,12 @@ export class PersonService {
   public searchQuery = computed(() => this.searchQuerySignal());
 
   constructor() {
-    // Auto-load persons when search query changes
+    // Auto-load persons only once on initialization
     effect(() => {
-      const query = this.searchQuerySignal();
-      const type = this.personType();
-      this.loadPersons(query, type);
+      // Only load persons once, not on every type change
+      if (!this.personsSignal().length) {
+        this.loadPersons();
+      }
     });
 
     // Auto-load selected person when ID changes
@@ -54,10 +55,12 @@ export class PersonService {
   // Methods to update reactive parameters
   setSearchQuery(query: string): void {
     this.searchQuerySignal.set(query);
+    // Don't trigger API call for search - use client-side filtering only
   }
 
   setPersonType(type: string): void {
     this.personType.set(type);
+    // Don't trigger API call for person type - use client-side filtering only
   }
 
   selectPerson(id: number | null): void {
@@ -65,18 +68,12 @@ export class PersonService {
   }
 
   // Data loading methods
-  private async loadPersons(searchQuery?: string, personType?: string): Promise<void> {
+  private async loadPersons(): Promise<void> {
     this.loadingSignal.set(true);
     this.errorSignal.set(null);
 
     try {
-      let endpoint = '/persons';
-      if (searchQuery) {
-        endpoint = `/persons/search?q=${searchQuery}`;
-      } else if (personType) {
-        endpoint = `/persons/type/${personType}`;
-      }
-      
+      const endpoint = '/persons';
       const response = await firstValueFrom(this.httpRepository.get<any>(endpoint));
       
       // Handle different response structures
@@ -191,7 +188,7 @@ export class PersonService {
 
   // Utility methods
   reload(): void {
-    this.loadPersons(this.searchQuerySignal(), this.personType());
+    this.loadPersons();
   }
 
   clearSearch(): void {
@@ -206,13 +203,26 @@ export class PersonService {
   public filteredPersons = computed(() => {
     const persons = this.persons();
     const query = this.searchQuerySignal();
+    const type = this.personType();
     
-    if (!query) return persons;
+    let filtered = persons;
     
-    return persons.filter((person: PersonDto) => 
-      person.firstName?.toLowerCase().includes(query.toLowerCase()) ||
-      person.lastName?.toLowerCase().includes(query.toLowerCase()) ||
-      person.emailPromotion?.toString().includes(query)
-    );
+    // Filter by search query
+    if (query) {
+      filtered = filtered.filter((person: PersonDto) => 
+        person.firstName?.toLowerCase().includes(query.toLowerCase()) ||
+        person.lastName?.toLowerCase().includes(query.toLowerCase()) ||
+        person.emailPromotion?.toString().includes(query)
+      );
+    }
+    
+    // Filter by person type
+    if (type) {
+      filtered = filtered.filter((person: PersonDto) => 
+        person.personType === type
+      );
+    }
+    
+    return filtered;
   });
 } 
