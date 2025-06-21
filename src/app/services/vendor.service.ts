@@ -9,103 +9,63 @@ import { VendorDto, CreateVendorDto, UpdateVendorDto } from '../models/vendor.dt
 export class VendorService {
   private httpRepository = inject(HttpRepository);
 
-  // Signals for reactive parameters
-  private searchQuerySignal = signal<string>('');
-  private selectedVendorId = signal<number | null>(null);
-  private filterType = signal<'all' | 'active' | 'preferred'>('all');
-
   // State signals
   private vendorsSignal = signal<VendorDto[]>([]);
+  private columnFiltersSignal = signal<{ [key: string]: any }>({});
   private selectedVendorSignal = signal<VendorDto | null>(null);
   private loadingSignal = signal<boolean>(false);
   private errorSignal = signal<string | null>(null);
 
   // Computed signals for easy access
   public vendors = computed(() => this.vendorsSignal());
+  public columnFilters = computed(() => this.columnFiltersSignal());
   public selectedVendor = computed(() => this.selectedVendorSignal());
   public isLoading = computed(() => this.loadingSignal());
   public error = computed(() => this.errorSignal());
   public hasError = computed(() => !!this.error());
-  public isEmpty = computed(() => this.vendors().length === 0);
-  public searchQuery = computed(() => this.searchQuerySignal());
+  public isEmpty = computed(() => this.vendors().length === 0 && !this.isLoading());
 
   constructor() {
-    // Auto-load vendors when search query or filter changes
-    effect(() => {
-      const query = this.searchQuerySignal();
-      const filter = this.filterType();
-      this.loadVendors(query, filter);
-    });
-
-    // Auto-load selected vendor when ID changes
-    effect(() => {
-      const id = this.selectedVendorId();
-      if (id) {
-        this.loadVendorById(id);
-      } else {
-        this.selectedVendorSignal.set(null);
-      }
-    });
-
-    // Initial load of vendors
     this.loadVendors();
   }
 
   // Methods to update reactive parameters
-  setSearchQuery(query: string): void {
-    this.searchQuerySignal.set(query);
-  }
-
-  setFilterType(filter: 'all' | 'active' | 'preferred'): void {
-    this.filterType.set(filter);
+  setColumnFilter(column: string, value: any) {
+    this.columnFiltersSignal.update(filters => {
+      const newFilters = { ...filters };
+      if (value !== null && value !== undefined && value !== '') {
+        newFilters[column] = value;
+      } else {
+        delete newFilters[column];
+      }
+      return newFilters;
+    });
   }
 
   selectVendor(id: number | null): void {
-    this.selectedVendorId.set(id);
+    if (id) {
+      const vendor = this.vendors().find(p => p.businessEntityId === id);
+      this.selectedVendorSignal.set(vendor || null);
+    } else {
+      this.selectedVendorSignal.set(null);
+    }
   }
 
   // Data loading methods
-  private async loadVendors(searchQuery?: string, filterType: 'all' | 'active' | 'preferred' = 'all'): Promise<void> {
+  private async loadVendors(): Promise<void> {
+    if (this.vendorsSignal().length > 0 && !this.error()) return; // Load only once unless there was an error
+
     this.loadingSignal.set(true);
     this.errorSignal.set(null);
 
     try {
-      let endpoint = '/vendors';
-      if (searchQuery) {
-        endpoint = `/vendors/search?q=${searchQuery}`;
-      } else if (filterType === 'active') {
-        endpoint = '/vendors/active';
-      } else if (filterType === 'preferred') {
-        endpoint = '/vendors/preferred';
-      }
-      
-      const response = await firstValueFrom(this.httpRepository.get<any>(endpoint));
-      
-      // Handle different response structures
-      let vendors: VendorDto[] = [];
-      if (Array.isArray(response)) {
-        vendors = response;
-      } else if (response && Array.isArray(response.value)) {
-        vendors = response.value;
-      } else if (response && response.value) {
-        vendors = [response.value];
-      }
-      
-      this.vendorsSignal.set(vendors || []);
+      const endpoint = '/vendors';
+      const response = await firstValueFrom(this.httpRepository.get<VendorDto[]>(endpoint));
+      this.vendorsSignal.set(response || []);
     } catch (err) {
       this.errorSignal.set(err instanceof Error ? err.message : 'Failed to load vendors');
     } finally {
       this.loadingSignal.set(false);
-    }
-  }
-
-  private async loadVendorById(id: number): Promise<void> {
-    try {
-      const vendor = await firstValueFrom(this.httpRepository.get<VendorDto>(`/vendors/${id}`));
-      this.selectedVendorSignal.set(vendor || null);
-    } catch (err) {
-      this.errorSignal.set(err instanceof Error ? err.message : 'Failed to load vendor');
-      this.selectedVendorSignal.set(null);
     }
   }
 
@@ -116,12 +76,8 @@ export class VendorService {
 
     try {
       const newVendor = await firstValueFrom(this.httpRepository.post<VendorDto>('/vendors', vendor));
-      if (newVendor) {
-        // Add to current list
-        this.vendorsSignal.update(vendors => [...vendors, newVendor]);
-        return newVendor;
-      }
-      throw new Error('Failed to create vendor');
+      this.vendorsSignal.update(vendors => [newVendor, ...vendors]);
+      return newVendor;
     } catch (err) {
       this.errorSignal.set(err instanceof Error ? err.message : 'Failed to create vendor');
       throw err;
@@ -136,20 +92,15 @@ export class VendorService {
 
     try {
       const updatedVendor = await firstValueFrom(this.httpRepository.put<VendorDto>(`/vendors/${id}`, vendor));
-      if (updatedVendor) {
-        // Update in current list
-        this.vendorsSignal.update(vendors => 
-          vendors.map(v => v.businessEntityId === id ? updatedVendor : v)
-        );
-        
-        // Update selected vendor if it's the one being edited
-        if (this.selectedVendorId() === id) {
-          this.selectedVendorSignal.set(updatedVendor);
-        }
-        
-        return updatedVendor;
+      this.vendorsSignal.update(vendors => 
+        vendors.map(p => p.businessEntityId === id ? updatedVendor : p)
+      );
+      
+      if (this.selectedVendor()?.businessEntityId === id) {
+        this.selectedVendorSignal.set(updatedVendor);
       }
-      throw new Error('Failed to update vendor');
+      
+      return updatedVendor;
     } catch (err) {
       this.errorSignal.set(err instanceof Error ? err.message : 'Failed to update vendor');
       throw err;
@@ -165,13 +116,11 @@ export class VendorService {
     try {
       await firstValueFrom(this.httpRepository.delete<void>(`/vendors/${id}`));
       
-      // Remove from current list
       this.vendorsSignal.update(vendors => 
-        vendors.filter(v => v.businessEntityId !== id)
+        vendors.filter(p => p.businessEntityId !== id)
       );
       
-      // Clear selection if it's the deleted vendor
-      if (this.selectedVendorId() === id) {
+      if (this.selectedVendor()?.businessEntityId === id) {
         this.selectVendor(null);
       }
     } catch (err) {
@@ -184,15 +133,12 @@ export class VendorService {
 
   // Utility methods
   reload(): void {
-    this.loadVendors(this.searchQuerySignal(), this.filterType());
+    this.vendorsSignal.set([]); // Clear existing data to force reload
+    this.loadVendors();
   }
 
-  clearSearch(): void {
-    this.searchQuerySignal.set('');
-  }
-
-  clearError(): void {
-    this.errorSignal.set(null);
+  clearFilters(): void {
+    this.columnFiltersSignal.set({});
   }
 
   // Helper methods for vendor status
@@ -213,16 +159,45 @@ export class VendorService {
     }
   }
 
-  // Computed signals for filtered data
+  // Computed signal for filtered data
   public filteredVendors = computed(() => {
     const vendors = this.vendors();
-    const query = this.searchQuerySignal();
+    const filters = this.columnFilters();
     
-    if (!query) return vendors;
-    
-    return vendors.filter((vendor: VendorDto) => 
-      vendor.name?.toLowerCase().includes(query.toLowerCase()) ||
-      vendor.accountNumber?.toLowerCase().includes(query.toLowerCase())
-    );
+    if (Object.keys(filters).length === 0) {
+      return vendors;
+    }
+
+    return vendors.filter(vendor => {
+      return Object.entries(filters).every(([key, value]) => {
+        if (value === null || value === undefined || value === '') return true;
+        const query = value.toString().toLowerCase();
+
+        switch (key) {
+          case 'businessEntityId':
+            return vendor.businessEntityId.toString().includes(query);
+          case 'accountNumber':
+            return vendor.accountNumber.toLowerCase().includes(query);
+          case 'name':
+            return vendor.name.toLowerCase().includes(query);
+          case 'creditRating':
+            return vendor.creditRating.toString() === query;
+          case 'preferredVendorStatus':
+            if (value === true) return vendor.preferredVendorStatus;
+            if (value === false) return !vendor.preferredVendorStatus;
+            return true;
+          case 'activeFlag':
+            if (value === true) return vendor.activeFlag;
+            if (value === false) return !vendor.activeFlag;
+            return true;
+          case 'purchasingWebServiceURL':
+            return (vendor.purchasingWebServiceURL || '').toLowerCase().includes(query);
+          case 'modifiedDate':
+            return new Date(vendor.modifiedDate).toLocaleDateString().includes(query);
+          default:
+            return true;
+        }
+      });
+    });
   });
 } 

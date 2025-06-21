@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { HttpRepository } from '../repositories/http-repository';
 import { PurchaseOrderDto, CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from '../models/purchase-order.dto';
 import { PurchaseOrderDetailDto, CreatePurchaseOrderDetailDto, UpdatePurchaseOrderDetailDto } from '../models/purchase-order-detail.dto';
+import { HttpParams } from '@angular/common/http';
 
 @Injectable({
   providedIn: 'root'
@@ -122,24 +123,19 @@ export class PurchaseOrderService {
     this.purchaseOrdersErrorSignal.set(null);
 
     try {
-      let endpoint = '/purchase-orders';
-      const params = new URLSearchParams();
+      let params = new HttpParams();
       
-      if (searchQuery) {
-        params.append('q', searchQuery);
+      if (searchQuery && searchQuery.trim()) {
+        params = params.set('q', searchQuery.trim());
       }
       if (vendorId) {
-        params.append('vendorId', vendorId.toString());
+        params = params.set('vendorId', vendorId.toString());
       }
-      if (status) {
-        params.append('status', status);
-      }
-      
-      if (params.toString()) {
-        endpoint += `?${params.toString()}`;
+      if (status && status.trim()) {
+        params = params.set('status', status.trim());
       }
       
-      const orders = await firstValueFrom(this.httpRepository.get<PurchaseOrderDto[]>(endpoint));
+      const orders = await firstValueFrom(this.httpRepository.get<PurchaseOrderDto[]>('/purchase-orders', params));
       this.purchaseOrdersSignal.set(orders || []);
     } catch (err) {
       this.purchaseOrdersErrorSignal.set(err instanceof Error ? err.message : 'Failed to load purchase orders');

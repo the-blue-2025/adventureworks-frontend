@@ -1,22 +1,20 @@
-import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap';
 import { PurchaseOrderService } from '../../services/purchase-order.service';
-import { PurchaseOrderDto, CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from '../../models/purchase-order.dto';
-import { PurchaseOrderFormComponent } from './purchase-order-form.component';
+import { PurchaseOrderDto } from '../../models/purchase-order.dto';
 
 @Component({
   selector: 'app-purchase-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgbModalModule, PurchaseOrderFormComponent],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="row">
       <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h2>Purchase Orders Management</h2>
-          <button class="btn btn-info" (click)="openCreateModal()">
+          <button class="btn btn-info" (click)="createNewPurchaseOrder()">
             <i class="bi bi-plus-circle"></i> Add Purchase Order
           </button>
         </div>
@@ -69,14 +67,14 @@ import { PurchaseOrderFormComponent } from './purchase-order-form.component';
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="!purchaseOrderService.isLoading() && purchaseOrderService.isEmpty()" class="text-center py-5">
+    <div *ngIf="!purchaseOrderService.isLoading() && purchaseOrderService.purchaseOrders().length === 0" class="text-center py-5">
       <i class="bi bi-cart fs-1 text-muted"></i>
       <h4 class="text-muted mt-3">No purchase orders found</h4>
       <p class="text-muted">Try adjusting your search criteria or add a new purchase order.</p>
     </div>
 
     <!-- Data Table -->
-    <div *ngIf="!purchaseOrderService.isLoading() && !purchaseOrderService.isEmpty()" class="table-responsive">
+    <div *ngIf="!purchaseOrderService.isLoading() && purchaseOrderService.purchaseOrders().length > 0" class="table-responsive">
       <table class="table table-striped table-hover">
         <thead class="table-dark">
           <tr>
@@ -144,9 +142,6 @@ import { PurchaseOrderFormComponent } from './purchase-order-form.component';
                 <button class="btn btn-sm btn-outline-info" (click)="viewDetails(po)" title="View Details">
                   <i class="bi bi-list-ul"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-primary" (click)="viewPurchaseOrder(po)">
-                  <i class="bi bi-eye"></i>
-                </button>
                 <button class="btn btn-sm btn-outline-warning" (click)="editPurchaseOrder(po)">
                   <i class="bi bi-pencil"></i>
                 </button>
@@ -159,15 +154,6 @@ import { PurchaseOrderFormComponent } from './purchase-order-form.component';
         </tbody>
       </table>
     </div>
-
-    <!-- Purchase Order Form Modal -->
-    <ng-template #purchaseOrderModal let-modal>
-      <app-purchase-order-form
-        [purchaseOrder]="selectedPurchaseOrder()"
-        (save)="onPurchaseOrderSaved($event, modal)"
-        (cancel)="closeModal(modal)"
-      ></app-purchase-order-form>
-    </ng-template>
   `,
   styles: [`
     .table th {
@@ -197,56 +183,46 @@ import { PurchaseOrderFormComponent } from './purchase-order-form.component';
   `]
 })
 export class PurchaseOrdersComponent implements OnInit {
-  private modalService = inject(NgbModal);
   private router = inject(Router);
   protected purchaseOrderService = inject(PurchaseOrderService);
 
   searchQuery = '';
   selectedStatus = '';
-  selectedPurchaseOrder = signal<PurchaseOrderDto | null>(null);
-
-  @ViewChild('purchaseOrderModal') purchaseOrderModal!: any;
 
   ngOnInit(): void {
     // Component is ready
   }
 
   onSearch(): void {
+    console.log('Search triggered with query:', this.searchQuery);
     this.purchaseOrderService.setSearchQuery(this.searchQuery);
   }
 
   onStatusChange(): void {
-    // You can implement status filtering here
-    this.purchaseOrderService.reload();
+    this.purchaseOrderService.setStatusFilter(this.selectedStatus);
   }
 
   clearSearch(): void {
     this.searchQuery = '';
     this.selectedStatus = '';
     this.purchaseOrderService.clearSearch();
+    this.purchaseOrderService.clearFilters();
   }
 
   reload(): void {
     this.purchaseOrderService.reload();
   }
 
+  createNewPurchaseOrder(): void {
+    this.router.navigate(['/purchase-orders/create']);
+  }
+
   viewDetails(po: PurchaseOrderDto): void {
     this.router.navigate(['/purchase-orders', po.purchaseOrderId, 'details']);
   }
 
-  openCreateModal(): void {
-    this.selectedPurchaseOrder.set(null);
-    this.modalService.open(this.purchaseOrderModal, { size: 'xl' });
-  }
-
-  viewPurchaseOrder(po: PurchaseOrderDto): void {
-    this.selectedPurchaseOrder.set(po);
-    this.modalService.open(this.purchaseOrderModal, { size: 'xl' });
-  }
-
   editPurchaseOrder(po: PurchaseOrderDto): void {
-    this.selectedPurchaseOrder.set(po);
-    this.modalService.open(this.purchaseOrderModal, { size: 'xl' });
+    this.router.navigate(['/purchase-orders', po.purchaseOrderId, 'edit']);
   }
 
   async deletePurchaseOrder(po: PurchaseOrderDto): Promise<void> {
@@ -258,15 +234,6 @@ export class PurchaseOrdersComponent implements OnInit {
         alert('Failed to delete purchase order');
       }
     }
-  }
-
-  onPurchaseOrderSaved(po: PurchaseOrderDto, modal: any): void {
-    this.closeModal(modal);
-    this.reload();
-  }
-
-  closeModal(modal: any): void {
-    modal.close();
   }
 
   getStatusBadgeClass(status: number): string {

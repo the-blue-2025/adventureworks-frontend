@@ -15,33 +15,15 @@ import { VendorFormComponent } from './vendor-form.component';
       <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h2>Vendors Management</h2>
-          <button class="btn btn-success" (click)="openCreateModal()">
-            <i class="bi bi-plus-circle"></i> Add Vendor
-          </button>
+          <div>
+            <button class="btn btn-outline-secondary me-2" (click)="clearAllFilters()">
+              <i class="bi bi-x-circle"></i> Clear All Filters
+            </button>
+            <button class="btn btn-success" (click)="openCreateModal()">
+              <i class="bi bi-plus-circle"></i> Add Vendor
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Search and Filter -->
-    <div class="row mb-4">
-      <div class="col-md-8">
-        <div class="input-group">
-          <input 
-            type="text" 
-            class="form-control" 
-            placeholder="Search vendors by name or account number..."
-            [(ngModel)]="searchQuery"
-            (input)="onSearch()"
-          >
-          <button class="btn btn-outline-secondary" type="button" (click)="clearSearch()">
-            <i class="bi bi-x-circle"></i>
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <button class="btn btn-outline-success w-100" (click)="reload()">
-          <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
       </div>
     </div>
 
@@ -59,14 +41,14 @@ import { VendorFormComponent } from './vendor-form.component';
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="!vendorService.isLoading() && vendorService.isEmpty()" class="text-center py-5">
+    <div *ngIf="!vendorService.isLoading() && vendorService.filteredVendors().length === 0" class="text-center py-5">
       <i class="bi bi-building fs-1 text-muted"></i>
       <h4 class="text-muted mt-3">No vendors found</h4>
       <p class="text-muted">Try adjusting your search criteria or add a new vendor.</p>
     </div>
 
     <!-- Data Table -->
-    <div *ngIf="!vendorService.isLoading() && !vendorService.isEmpty()" class="table-responsive">
+    <div *ngIf="!vendorService.isLoading() && vendorService.filteredVendors().length > 0" class="table-responsive">
       <table class="table table-striped table-hover">
         <thead class="table-dark">
           <tr>
@@ -74,14 +56,45 @@ import { VendorFormComponent } from './vendor-form.component';
             <th>Account Number</th>
             <th>Name</th>
             <th>Credit Rating</th>
-            <th>Status</th>
-            <th>Web Service URL</th>
+            <th>Preferred Status</th>
+            <th>Active Status</th>
             <th>Modified Date</th>
             <th>Actions</th>
           </tr>
+          <tr class="filter-row">
+            <td><input type="text" class="form-control form-control-sm" [(ngModel)]="columnFilters['businessEntityId']" (ngModelChange)="onFilterChange('businessEntityId', $event)"></td>
+            <td><input type="text" class="form-control form-control-sm" [(ngModel)]="columnFilters['accountNumber']" (ngModelChange)="onFilterChange('accountNumber', $event)"></td>
+            <td><input type="text" class="form-control form-control-sm" [(ngModel)]="columnFilters['name']" (ngModelChange)="onFilterChange('name', $event)"></td>
+            <td>
+              <select class="form-select form-select-sm" [(ngModel)]="columnFilters['creditRating']" (ngModelChange)="onFilterChange('creditRating', $event)">
+                <option value="">All</option>
+                <option value="1">Superior</option>
+                <option value="2">Excellent</option>
+                <option value="3">Above Average</option>
+                <option value="4">Average</option>
+                <option value="5">Below Average</option>
+              </select>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" [(ngModel)]="columnFilters['preferredVendorStatus']" (ngModelChange)="onFilterChange('preferredVendorStatus', $event)">
+                <option value="">Any</option>
+                <option [ngValue]="true">Preferred</option>
+                <option [ngValue]="false">Standard</option>
+              </select>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" [(ngModel)]="columnFilters['activeFlag']" (ngModelChange)="onFilterChange('activeFlag', $event)">
+                <option value="">Any</option>
+                <option [ngValue]="true">Active</option>
+                <option [ngValue]="false">Inactive</option>
+              </select>
+            </td>
+            <td><input type="text" class="form-control form-control-sm" placeholder="MM/DD/YYYY" [(ngModel)]="columnFilters['modifiedDate']" (ngModelChange)="onFilterChange('modifiedDate', $event)"></td>
+            <td></td>
+          </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let vendor of vendorService.vendors()">
+          <tr *ngFor="let vendor of vendorService.filteredVendors()">
             <td>{{ vendor.businessEntityId }}</td>
             <td>
               <code>{{ vendor.accountNumber }}</code>
@@ -95,24 +108,14 @@ import { VendorFormComponent } from './vendor-form.component';
               </span>
             </td>
             <td>
-              <div class="d-flex flex-column gap-1">
-                <span class="badge" [ngClass]="vendor.preferredVendorStatus ? 'bg-success' : 'bg-secondary'">
-                  {{ vendor.preferredVendorStatus ? 'Preferred' : 'Standard' }}
-                </span>
-                <span class="badge" [ngClass]="vendor.activeFlag ? 'bg-success' : 'bg-danger'">
-                  {{ vendor.activeFlag ? 'Active' : 'Inactive' }}
-                </span>
-              </div>
+              <span class="badge" [ngClass]="vendor.preferredVendorStatus ? 'bg-success' : 'bg-secondary'">
+                {{ vendor.preferredVendorStatus ? 'Preferred' : 'Standard' }}
+              </span>
             </td>
             <td>
-              <span *ngIf="vendor.purchasingWebServiceURL; else noUrl">
-                <a [href]="vendor.purchasingWebServiceURL" target="_blank" class="text-decoration-none">
-                  <i class="bi bi-link-45deg"></i> View
-                </a>
+              <span class="badge" [ngClass]="vendor.activeFlag ? 'bg-success' : 'bg-danger'">
+                {{ vendor.activeFlag ? 'Active' : 'Inactive' }}
               </span>
-              <ng-template #noUrl>
-                <span class="text-muted">-</span>
-              </ng-template>
             </td>
             <td>{{ vendor.modifiedDate | date:'short' }}</td>
             <td>
@@ -160,13 +163,33 @@ import { VendorFormComponent } from './vendor-form.component';
       padding: 2px 4px;
       border-radius: 3px;
     }
+
+    .table-dark .filter-row input,
+    .table-dark .filter-row select {
+      background-color: #45494d;
+      color: #fff;
+      border-color: #595d61;
+    }
+
+    .table-dark .filter-row input::placeholder {
+      color: #a0a3a6;
+    }
   `]
 })
 export class VendorsComponent implements OnInit {
   private modalService = inject(NgbModal);
   protected vendorService = inject(VendorService);
 
-  searchQuery = '';
+  columnFilters: { [key: string]: any } = {
+    businessEntityId: '',
+    accountNumber: '',
+    name: '',
+    creditRating: '',
+    preferredVendorStatus: '',
+    activeFlag: '',
+    modifiedDate: ''
+  };
+
   selectedVendor = signal<VendorDto | null>(null);
 
   @ViewChild('vendorModal') vendorModal!: any;
@@ -175,13 +198,21 @@ export class VendorsComponent implements OnInit {
     // Component is ready
   }
 
-  onSearch(): void {
-    this.vendorService.setSearchQuery(this.searchQuery);
+  onFilterChange(column: string, value: any) {
+    this.vendorService.setColumnFilter(column, value);
   }
 
-  clearSearch(): void {
-    this.searchQuery = '';
-    this.vendorService.clearSearch();
+  clearAllFilters(): void {
+    this.columnFilters = {
+      businessEntityId: '',
+      accountNumber: '',
+      name: '',
+      creditRating: '',
+      preferredVendorStatus: '',
+      activeFlag: '',
+      modifiedDate: ''
+    };
+    this.vendorService.clearFilters();
   }
 
   reload(): void {

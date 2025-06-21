@@ -14,6 +14,14 @@ export const routes: Routes = [
   { path: 'ship-methods', component: ShipMethodsComponent },
   { path: 'purchase-orders', component: PurchaseOrdersComponent },
   { 
+    path: 'purchase-orders/create', 
+    loadComponent: () => import('./components/purchase-orders/purchase-order-form.component').then(m => m.PurchaseOrderFormComponent)
+  },
+  { 
+    path: 'purchase-orders/:id/edit', 
+    loadComponent: () => import('./components/purchase-orders/purchase-order-form.component').then(m => m.PurchaseOrderFormComponent)
+  },
+  { 
     path: 'purchase-orders/:id/details', 
     loadComponent: () => import('./components/purchase-order-details/purchase-order-details.component').then(m => m.PurchaseOrderDetailsComponent)
   },

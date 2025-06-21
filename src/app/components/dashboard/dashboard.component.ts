@@ -20,7 +20,7 @@ import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
           <div class="card-body">
             <i class="bi bi-people-fill fs-1 text-primary mb-3"></i>
             <h5 class="card-title">Persons</h5>
-            <p class="card-text">Manage customer and employee information</p>
+            <p class="card-text">Manage person information</p>
             <button class="btn btn-primary" (click)="navigateTo('/persons')">
               Manage Persons
             </button>
@@ -33,7 +33,7 @@ import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
           <div class="card-body">
             <i class="bi bi-building-fill fs-1 text-success mb-3"></i>
             <h5 class="card-title">Vendors</h5>
-            <p class="card-text">Manage vendor and supplier information</p>
+            <p class="card-text">Manage vendor information</p>
             <button class="btn btn-success" (click)="navigateTo('/vendors')">
               Manage Vendors
             </button>
@@ -44,7 +44,7 @@ import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
       <div class="col-md-6 col-lg-3 mb-4">
         <div class="card text-center h-100">
           <div class="card-body">
-            <i class="bi bi-truck-fill fs-1 text-warning mb-3"></i>
+            <i class="bi bi-box fs-1 text-warning mb-3"></i>
             <h5 class="card-title">Ship Methods</h5>
             <p class="card-text">Configure shipping methods and rates</p>
             <button class="btn btn-warning" (click)="navigateTo('/ship-methods')">
