@@ -135,7 +135,7 @@ export class PurchaseOrderService {
         params = params.set('status', status.trim());
       }
       
-      const orders = await firstValueFrom(this.httpRepository.get<PurchaseOrderDto[]>('/purchase-orders', params));
+      const orders = await firstValueFrom(this.httpRepository.get<PurchaseOrderDto[]>('/purchase-orders', { params }));
       this.purchaseOrdersSignal.set(orders || []);
     } catch (err) {
       this.purchaseOrdersErrorSignal.set(err instanceof Error ? err.message : 'Failed to load purchase orders');

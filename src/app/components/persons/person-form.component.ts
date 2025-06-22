@@ -1,6 +1,6 @@
-import { Component, EventEmitter, Input, Output, inject, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, ValidatorFn, AbstractControl } from '@angular/forms';
 import { PersonService } from '../../services/person.service';
 import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person.dto';
 
@@ -11,7 +11,7 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
   template: `
     <div class="modal-header">
       <h4 class="modal-title">
-        {{ isEditMode ? 'Edit Person' : 'Create New Person' }}
+        {{ isEditMode() ? 'Edit Person' : 'Create New Person' }}
       </h4>
       <button type="button" class="btn-close" (click)="onCancel()"></button>
     </div>
@@ -30,9 +30,11 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
               <option value="SP">Sales Person</option>
               <option value="GC">General Contact</option>
             </select>
-            <div *ngIf="personForm.get('personType')?.invalid && personForm.get('personType')?.touched" class="text-danger">
-              Person type is required
-            </div>
+            @if (personForm.get('personType')?.invalid && personForm.get('personType')?.touched) {
+              <div class="text-danger">
+                Person type is required
+              </div>
+            }
           </div>
 
           <div class="col-md-6 mb-3">
@@ -45,9 +47,11 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
           <div class="col-md-4 mb-3">
             <label for="firstName" class="form-label">First Name *</label>
             <input type="text" id="firstName" class="form-control" formControlName="firstName" placeholder="First Name">
-            <div *ngIf="personForm.get('firstName')?.invalid && personForm.get('firstName')?.touched" class="text-danger">
-              First name is required
-            </div>
+            @if (personForm.get('firstName')?.invalid && personForm.get('firstName')?.touched) {
+              <div class="text-danger">
+                First name is required
+              </div>
+            }
           </div>
 
           <div class="col-md-4 mb-3">
@@ -58,9 +62,11 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
           <div class="col-md-4 mb-3">
             <label for="lastName" class="form-label">Last Name *</label>
             <input type="text" id="lastName" class="form-control" formControlName="lastName" placeholder="Last Name">
-            <div *ngIf="personForm.get('lastName')?.invalid && personForm.get('lastName')?.touched" class="text-danger">
-              Last name is required
-            </div>
+            @if (personForm.get('lastName')?.invalid && personForm.get('lastName')?.touched) {
+              <div class="text-danger">
+                Last name is required
+              </div>
+            }
           </div>
         </div>
 
@@ -92,21 +98,39 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
         </div>
 
         <!-- Display existing person info in view mode -->
-        <div *ngIf="isViewMode && person" class="alert alert-info">
-          <h6>Additional Information:</h6>
-          <p><strong>Business Entity ID:</strong> {{ person.businessEntityId }}</p>
-          <p><strong>Modified Date:</strong> {{ person.modifiedDate | date:'full' }}</p>
-        </div>
+        @if (isViewMode() && personSignal()) {
+          <div class="alert alert-info">
+            <h6>Additional Information:</h6>
+            <p><strong>Business Entity ID:</strong> {{ personSignal()?.businessEntityId }}</p>
+            <p><strong>Modified Date:</strong> {{ personSignal()?.modifiedDate | date:'full' }}</p>
+          </div>
+        }
+
+        <!-- Form validation summary -->
+        @if (formErrors().length > 0) {
+          <div class="alert alert-danger">
+            <h6>Please fix the following errors:</h6>
+            <ul class="mb-0">
+              @for (error of formErrors(); track error) {
+                <li>{{ error }}</li>
+              }
+            </ul>
+          </div>
+        }
       </div>
 
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="onCancel()">
-          {{ isViewMode ? 'Close' : 'Cancel' }}
+          {{ isViewMode() ? 'Close' : 'Cancel' }}
         </button>
-        <button *ngIf="!isViewMode" type="submit" class="btn btn-primary" [disabled]="personForm.invalid || isSubmitting">
-          <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
-          {{ isEditMode ? 'Update' : 'Create' }}
-        </button>
+        @if (!isViewMode()) {
+          <button type="submit" class="btn btn-primary" [disabled]="personForm.invalid || isSubmitting()">
+            @if (isSubmitting()) {
+              <span class="spinner-border spinner-border-sm me-2"></span>
+            }
+            {{ isEditMode() ? 'Update' : 'Create' }}
+          </button>
+        }
       </div>
     </form>
   `,
@@ -119,77 +143,187 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
       font-size: 0.875rem;
       margin-top: 0.25rem;
     }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+
+    .form-control.is-invalid,
+    .form-select.is-invalid {
+      border-color: #dc3545;
+    }
+
+    .form-control.is-valid,
+    .form-select.is-valid {
+      border-color: #198754;
+    }
   `]
 })
 export class PersonFormComponent implements OnInit {
-  @Input() person: PersonDto | null = null;
+  @Input() set person(value: PersonDto | null) {
+    this.personSignal.set(value);
+  }
   @Output() save = new EventEmitter<PersonDto>();
   @Output() cancel = new EventEmitter<void>();
 
   private fb = inject(FormBuilder);
   private personService = inject(PersonService);
 
-  personForm!: FormGroup;
-  isSubmitting = false;
+  // Reactive signals
+  personSignal = signal<PersonDto | null>(null);
+  isSubmitting = signal(false);
 
-  get isEditMode(): boolean {
-    return !!this.person;
-  }
+  personForm = this.fb.group({
+    personType: ['', [Validators.required, this.personTypeValidator()]],
+    title: [''],
+    firstName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
+    middleName: ['', Validators.maxLength(50)],
+    lastName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
+    suffix: ['', Validators.maxLength(10)],
+    emailPromotion: [0, [Validators.min(0), Validators.max(2)]],
+    nameStyle: [true]
+  });
 
-  get isViewMode(): boolean {
-    return false; // You can add logic to determine view mode if needed
+  // Computed signals for reactive UI
+  isEditMode = computed(() => !!this.personSignal());
+  isViewMode = computed(() => false); // You can add logic to determine view mode if needed
+
+  formErrors = computed(() => {
+    const errors: string[] = [];
+    const controls = this.personForm.controls;
+
+    // Check each control for errors
+    Object.keys(controls).forEach(key => {
+      const control = controls[key as keyof typeof controls];
+      if (control.invalid && control.touched) {
+        if (control.errors?.['required']) {
+          errors.push(`${this.getFieldLabel(key)} is required`);
+        }
+        if (control.errors?.['minlength']) {
+          errors.push(`${this.getFieldLabel(key)} must be at least ${control.errors['minlength'].requiredLength} characters`);
+        }
+        if (control.errors?.['maxlength']) {
+          errors.push(`${this.getFieldLabel(key)} must not exceed ${control.errors['maxlength'].requiredLength} characters`);
+        }
+        if (control.errors?.['min']) {
+          errors.push(`${this.getFieldLabel(key)} must be at least ${control.errors['min'].min}`);
+        }
+        if (control.errors?.['max']) {
+          errors.push(`${this.getFieldLabel(key)} must not exceed ${control.errors['max'].max}`);
+        }
+        if (control.errors?.['invalidPersonType']) {
+          errors.push('Please select a valid person type');
+        }
+      }
+    });
+
+    return errors;
+  });
+
+  constructor() {
+    // Auto-populate form when person changes
+    effect(() => {
+      const person = this.personSignal();
+      if (person) {
+        this.personForm.patchValue({
+          personType: person.personType || '',
+          title: person.title || '',
+          firstName: person.firstName || '',
+          middleName: person.middleName || '',
+          lastName: person.lastName || '',
+          suffix: person.suffix || '',
+          emailPromotion: person.emailPromotion || 0,
+          nameStyle: person.nameStyle ?? true
+        });
+      } else {
+        this.personForm.reset({
+          personType: '',
+          title: '',
+          firstName: '',
+          middleName: '',
+          lastName: '',
+          suffix: '',
+          emailPromotion: 0,
+          nameStyle: true
+        });
+      }
+    });
   }
 
   ngOnInit(): void {
-    this.initForm();
-  }
-
-  private initForm(): void {
-    this.personForm = this.fb.group({
-      personType: [this.person?.personType || '', Validators.required],
-      title: [this.person?.title || ''],
-      firstName: [this.person?.firstName || '', Validators.required],
-      middleName: [this.person?.middleName || ''],
-      lastName: [this.person?.lastName || '', Validators.required],
-      suffix: [this.person?.suffix || ''],
-      emailPromotion: [this.person?.emailPromotion || 0],
-      nameStyle: [this.person?.nameStyle ?? true]
-    });
-
-    if (this.isViewMode) {
-      this.personForm.disable();
-    }
+    // Component is now reactive and will automatically update when inputs change
   }
 
   async onSubmit(): Promise<void> {
     if (this.personForm.invalid) {
+      // Mark all fields as touched to show validation errors
+      Object.keys(this.personForm.controls).forEach(key => {
+        const control = this.personForm.get(key);
+        control?.markAsTouched();
+      });
       return;
     }
 
-    this.isSubmitting = true;
+    this.isSubmitting.set(true);
 
     try {
       const formValue = this.personForm.value;
       let result: PersonDto;
 
-      if (this.isEditMode && this.person) {
-        const updateData: UpdatePersonDto = formValue;
-        result = await this.personService.updatePerson(this.person.businessEntityId, updateData);
+      if (this.isEditMode() && this.personSignal()) {
+        const updateData: UpdatePersonDto = formValue as UpdatePersonDto;
+        result = await this.personService.updatePerson(this.personSignal()!.businessEntityId, updateData);
       } else {
-        const createData: CreatePersonDto = formValue;
+        const createData: CreatePersonDto = formValue as CreatePersonDto;
         result = await this.personService.createPerson(createData);
       }
 
       this.save.emit(result);
     } catch (error) {
       console.error('Error saving person:', error);
-      alert('Failed to save person. Please try again.');
+      // Error handling is managed by the service
     } finally {
-      this.isSubmitting = false;
+      this.isSubmitting.set(false);
     }
   }
 
   onCancel(): void {
     this.cancel.emit();
+  }
+
+  // Custom validator for person type
+  private personTypeValidator(): ValidatorFn {
+    return (control: AbstractControl): {[key: string]: any} | null => {
+      const validTypes = ['EM', 'SC', 'VC', 'IN', 'SP', 'GC'];
+      const value = control.value;
+      
+      if (!value) {
+        return null; // Let required validator handle empty values
+      }
+      
+      if (!validTypes.includes(value)) {
+        return { 'invalidPersonType': { value: control.value } };
+      }
+      
+      return null;
+    };
+  }
+
+  // Helper method to get human-readable field labels
+  private getFieldLabel(fieldName: string): string {
+    const labels: { [key: string]: string } = {
+      personType: 'Person Type',
+      title: 'Title',
+      firstName: 'First Name',
+      middleName: 'Middle Name',
+      lastName: 'Last Name',
+      suffix: 'Suffix',
+      emailPromotion: 'Email Promotion',
+      nameStyle: 'Name Style'
+    };
+    
+    return labels[fieldName] || fieldName;
   }
 } 

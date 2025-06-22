@@ -1,5 +1,5 @@
 import { Injectable, inject, computed, signal, effect } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable, map, catchError, of } from 'rxjs';
 import { HttpRepository } from '../repositories/http-repository';
 import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../models/person.dto';
 
@@ -9,10 +9,10 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../models/person.dt
 export class PersonService {
   private httpRepository = inject(HttpRepository);
 
-  // Signals for reactive parameters
+  // Reactive parameters using signals
   private searchQuerySignal = signal<string>('');
-  private selectedPersonId = signal<number | null>(null);
-  private personType = signal<string>('');
+  private personTypeSignal = signal<string>('');
+  private selectedPersonIdSignal = signal<number | null>(null);
 
   // State signals
   private personsSignal = signal<PersonDto[]>([]);
@@ -20,27 +20,36 @@ export class PersonService {
   private loadingSignal = signal<boolean>(false);
   private errorSignal = signal<string | null>(null);
 
-  // Computed signals for easy access
+  // Public computed signals for components
   public persons = computed(() => this.personsSignal());
   public selectedPerson = computed(() => this.selectedPersonSignal());
   public isLoading = computed(() => this.loadingSignal());
   public error = computed(() => this.errorSignal());
   public hasError = computed(() => !!this.error());
   public isEmpty = computed(() => this.persons().length === 0);
-  public searchQuery = computed(() => this.searchQuerySignal());
+
+  // Filtered persons with reactive filtering
+  public filteredPersons = computed(() => {
+    const persons = this.persons();
+    const searchQuery = this.searchQuerySignal();
+    const personType = this.personTypeSignal();
+    
+    return persons.filter((person: PersonDto) => {
+      const matchesSearch = !searchQuery || 
+        person.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        person.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        person.emailPromotion?.toString().includes(searchQuery);
+      
+      const matchesType = !personType || person.personType === personType;
+      
+      return matchesSearch && matchesType;
+    });
+  });
 
   constructor() {
-    // Auto-load persons only once on initialization
-    effect(() => {
-      // Only load persons once, not on every type change
-      if (!this.personsSignal().length) {
-        this.loadPersons();
-      }
-    });
-
     // Auto-load selected person when ID changes
     effect(() => {
-      const id = this.selectedPersonId();
+      const id = this.selectedPersonIdSignal();
       if (id) {
         this.loadPersonById(id);
       } else {
@@ -48,23 +57,21 @@ export class PersonService {
       }
     });
 
-    // Initial load of persons
+    // Initial load
     this.loadPersons();
   }
 
   // Methods to update reactive parameters
   setSearchQuery(query: string): void {
     this.searchQuerySignal.set(query);
-    // Don't trigger API call for search - use client-side filtering only
   }
 
   setPersonType(type: string): void {
-    this.personType.set(type);
-    // Don't trigger API call for person type - use client-side filtering only
+    this.personTypeSignal.set(type);
   }
 
   selectPerson(id: number | null): void {
-    this.selectedPersonId.set(id);
+    this.selectedPersonIdSignal.set(id);
   }
 
   // Data loading methods
@@ -73,22 +80,22 @@ export class PersonService {
     this.errorSignal.set(null);
 
     try {
-      const endpoint = '/persons';
-      const response = await firstValueFrom(this.httpRepository.get<any>(endpoint));
+      const response = await this.httpRepository.get<any>('/persons').toPromise();
       
       // Handle different response structures
       let persons: PersonDto[] = [];
       if (Array.isArray(response)) {
         persons = response;
-      } else if (response && Array.isArray(response.value)) {
+      } else if (response && typeof response === 'object' && 'value' in response && Array.isArray(response.value)) {
         persons = response.value;
-      } else if (response && response.value) {
+      } else if (response && typeof response === 'object' && 'value' in response) {
         persons = [response.value];
       }
       
       this.personsSignal.set(persons || []);
-    } catch (err) {
-      this.errorSignal.set(err instanceof Error ? err.message : 'Failed to load persons');
+    } catch (error) {
+      console.error('Error loading persons:', error);
+      this.errorSignal.set(error instanceof Error ? error.message : 'Failed to load persons');
     } finally {
       this.loadingSignal.set(false);
     }
@@ -96,19 +103,20 @@ export class PersonService {
 
   private async loadPersonById(id: number): Promise<void> {
     try {
-      const response = await firstValueFrom(this.httpRepository.get<any>(`/persons/${id}`));
+      const response = await this.httpRepository.get<any>(`/persons/${id}`).toPromise();
       
       // Handle different response structures
       let person: PersonDto | null = null;
       if (response && response.businessEntityId) {
         person = response;
-      } else if (response && response.value && response.value.businessEntityId) {
+      } else if (response && typeof response === 'object' && 'value' in response && response.value && response.value.businessEntityId) {
         person = response.value;
       }
       
       this.selectedPersonSignal.set(person || null);
-    } catch (err) {
-      this.errorSignal.set(err instanceof Error ? err.message : 'Failed to load person');
+    } catch (error) {
+      console.error(`Error loading person ${id}:`, error);
+      this.errorSignal.set(error instanceof Error ? error.message : 'Failed to load person');
       this.selectedPersonSignal.set(null);
     }
   }
@@ -119,16 +127,17 @@ export class PersonService {
     this.errorSignal.set(null);
 
     try {
-      const newPerson = await firstValueFrom(this.httpRepository.post<PersonDto>('/persons', person));
+      const newPerson = await this.httpRepository.post<PersonDto>('/persons', person).toPromise();
       if (newPerson) {
         // Add to current list
         this.personsSignal.update(persons => [...persons, newPerson]);
         return newPerson;
       }
       throw new Error('Failed to create person');
-    } catch (err) {
-      this.errorSignal.set(err instanceof Error ? err.message : 'Failed to create person');
-      throw err;
+    } catch (error) {
+      console.error('Error creating person:', error);
+      this.errorSignal.set(error instanceof Error ? error.message : 'Failed to create person');
+      throw error;
     } finally {
       this.loadingSignal.set(false);
     }
@@ -139,7 +148,7 @@ export class PersonService {
     this.errorSignal.set(null);
 
     try {
-      const updatedPerson = await firstValueFrom(this.httpRepository.put<PersonDto>(`/persons/${id}`, person));
+      const updatedPerson = await this.httpRepository.put<PersonDto>(`/persons/${id}`, person).toPromise();
       if (updatedPerson) {
         // Update in current list
         this.personsSignal.update(persons => 
@@ -147,16 +156,17 @@ export class PersonService {
         );
         
         // Update selected person if it's the one being edited
-        if (this.selectedPersonId() === id) {
+        if (this.selectedPersonIdSignal() === id) {
           this.selectedPersonSignal.set(updatedPerson);
         }
         
         return updatedPerson;
       }
       throw new Error('Failed to update person');
-    } catch (err) {
-      this.errorSignal.set(err instanceof Error ? err.message : 'Failed to update person');
-      throw err;
+    } catch (error) {
+      console.error('Error updating person:', error);
+      this.errorSignal.set(error instanceof Error ? error.message : 'Failed to update person');
+      throw error;
     } finally {
       this.loadingSignal.set(false);
     }
@@ -167,7 +177,7 @@ export class PersonService {
     this.errorSignal.set(null);
 
     try {
-      await firstValueFrom(this.httpRepository.delete<void>(`/persons/${id}`));
+      await this.httpRepository.delete<void>(`/persons/${id}`).toPromise();
       
       // Remove from current list
       this.personsSignal.update(persons => 
@@ -175,12 +185,13 @@ export class PersonService {
       );
       
       // Clear selection if it's the deleted person
-      if (this.selectedPersonId() === id) {
+      if (this.selectedPersonIdSignal() === id) {
         this.selectPerson(null);
       }
-    } catch (err) {
-      this.errorSignal.set(err instanceof Error ? err.message : 'Failed to delete person');
-      throw err;
+    } catch (error) {
+      console.error('Error deleting person:', error);
+      this.errorSignal.set(error instanceof Error ? error.message : 'Failed to delete person');
+      throw error;
     } finally {
       this.loadingSignal.set(false);
     }
@@ -198,31 +209,4 @@ export class PersonService {
   clearError(): void {
     this.errorSignal.set(null);
   }
-
-  // Computed signals for filtered data
-  public filteredPersons = computed(() => {
-    const persons = this.persons();
-    const query = this.searchQuerySignal();
-    const type = this.personType();
-    
-    let filtered = persons;
-    
-    // Filter by search query
-    if (query) {
-      filtered = filtered.filter((person: PersonDto) => 
-        person.firstName?.toLowerCase().includes(query.toLowerCase()) ||
-        person.lastName?.toLowerCase().includes(query.toLowerCase()) ||
-        person.emailPromotion?.toString().includes(query)
-      );
-    }
-    
-    // Filter by person type
-    if (type) {
-      filtered = filtered.filter((person: PersonDto) => 
-        person.personType === type
-      );
-    }
-    
-    return filtered;
-  });
 } 

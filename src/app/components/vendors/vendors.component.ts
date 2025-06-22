@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap';
-import { VendorService } from '../../services/vendor.service';
+import { VendorService, VendorFilters } from '../../services/vendor.service';
 import { VendorDto, CreateVendorDto, UpdateVendorDto } from '../../models/vendor.dto';
 import { VendorFormComponent } from './vendor-form.component';
 
@@ -199,7 +199,7 @@ export class VendorsComponent implements OnInit {
   }
 
   onFilterChange(column: string, value: any) {
-    this.vendorService.setColumnFilter(column, value);
+    this.vendorService.setColumnFilter(column as keyof VendorFilters, value);
   }
 
   clearAllFilters(): void {
