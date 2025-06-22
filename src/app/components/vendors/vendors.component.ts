@@ -144,37 +144,7 @@ import { VendorFormComponent } from './vendor-form.component';
         (cancel)="closeModal(modal)"
       ></app-vendor-form>
     </ng-template>
-  `,
-  styles: [`
-    .table th {
-      white-space: nowrap;
-    }
-    
-    .btn-group .btn {
-      margin-right: 2px;
-    }
-    
-    .btn-group .btn:last-child {
-      margin-right: 0;
-    }
-    
-    code {
-      background-color: #f8f9fa;
-      padding: 2px 4px;
-      border-radius: 3px;
-    }
-
-    .table-dark .filter-row input,
-    .table-dark .filter-row select {
-      background-color: #45494d;
-      color: #fff;
-      border-color: #595d61;
-    }
-
-    .table-dark .filter-row input::placeholder {
-      color: #a0a3a6;
-    }
-  `]
+  `
 })
 export class VendorsComponent implements OnInit {
   private modalService = inject(NgbModal);

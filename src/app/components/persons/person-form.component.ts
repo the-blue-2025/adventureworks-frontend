@@ -133,33 +133,7 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
         }
       </div>
     </form>
-  `,
-  styles: [`
-    .form-label {
-      font-weight: 500;
-    }
-    
-    .text-danger {
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-      border-color: #0d6efd;
-      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-    }
-
-    .form-control.is-invalid,
-    .form-select.is-invalid {
-      border-color: #dc3545;
-    }
-
-    .form-control.is-valid,
-    .form-select.is-valid {
-      border-color: #198754;
-    }
-  `]
+  `
 })
 export class PersonFormComponent implements OnInit {
   @Input() set person(value: PersonDto | null) {

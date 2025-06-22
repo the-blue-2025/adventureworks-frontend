@@ -1,3 +1,12 @@
+// Polyfill for $localize (needed for SSR)
+(globalThis as any).$localize = (messageParts: TemplateStringsArray, ...expressions: any[]) => {
+  let result = messageParts[0];
+  for (let i = 0; i < expressions.length; i++) {
+    result += expressions[i] + messageParts[i + 1];
+  }
+  return result;
+};
+
 import {
   AngularNodeAppEngine,
   createNodeRequestHandler,

@@ -233,34 +233,7 @@ import { ShipMethodDto, CreateShipMethodDto, UpdateShipMethodDto } from '../../m
         </tbody>
       </table>
     </div>
-  `,
-  styles: [`
-    .table th {
-      white-space: nowrap;
-    }
-    
-    .btn-group .btn {
-      margin-right: 2px;
-    }
-    
-    .btn-group .btn:last-child {
-      margin-right: 0;
-    }
-
-    .form-control-sm {
-      font-size: 0.875rem;
-      padding: 0.25rem 0.5rem;
-    }
-
-    .text-danger.small {
-      font-size: 0.75rem;
-      margin-top: 0.125rem;
-    }
-
-    .table-warning {
-      background-color: rgba(255, 193, 7, 0.1) !important;
-    }
-  `]
+  `
 })
 export class ShipMethodsComponent implements OnInit {
   private fb = inject(FormBuilder);

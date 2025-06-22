@@ -154,33 +154,7 @@ import { PurchaseOrderDto } from '../../models/purchase-order.dto';
         </tbody>
       </table>
     </div>
-  `,
-  styles: [`
-    .table th {
-      white-space: nowrap;
-    }
-    
-    .btn-group .btn {
-      margin-right: 2px;
-    }
-    
-    .btn-group .btn:last-child {
-      margin-right: 0;
-    }
-
-    .table tbody tr {
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    .table tbody tr:hover {
-      background-color: rgba(0, 123, 255, 0.1) !important;
-    }
-
-    .table tbody tr:active {
-      background-color: rgba(0, 123, 255, 0.2) !important;
-    }
-  `]
+  `
 })
 export class PurchaseOrdersComponent implements OnInit {
   private router = inject(Router);

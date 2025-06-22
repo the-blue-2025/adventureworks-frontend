@@ -63,17 +63,7 @@ import { ShipMethodDto, CreateShipMethodDto, UpdateShipMethodDto } from '../../m
         </button>
       </div>
     </form>
-  `,
-  styles: [`
-    .form-label {
-      font-weight: 500;
-    }
-    
-    .text-danger {
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
-  `]
+  `
 })
 export class ShipMethodFormComponent implements OnInit {
   @Input() shipMethod: ShipMethodDto | null = null;

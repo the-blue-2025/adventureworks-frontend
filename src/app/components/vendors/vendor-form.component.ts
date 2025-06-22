@@ -91,17 +91,7 @@ import { VendorDto, CreateVendorDto, UpdateVendorDto } from '../../models/vendor
         </button>
       </div>
     </form>
-  `,
-  styles: [`
-    .form-label {
-      font-weight: 500;
-    }
-    
-    .text-danger {
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
-  `]
+  `
 })
 export class VendorFormComponent implements OnInit {
   @Input() vendor: VendorDto | null = null;

@@ -230,26 +230,7 @@ import { PurchaseOrderDetailFormComponent } from '../purchase-order-details/purc
         (cancelled)="closeModal(modal)"
       ></app-purchase-order-detail-form>
     </ng-template>
-  `,
-  styles: [`
-    .form-label {
-      font-weight: 500;
-    }
-    
-    .text-danger {
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
-
-    .card {
-      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    }
-
-    .card-header {
-      background-color: #f8f9fa;
-      border-bottom: 1px solid #dee2e6;
-    }
-  `]
+  `
 })
 export class PurchaseOrderFormComponent implements OnInit {
   private fb = inject(FormBuilder);

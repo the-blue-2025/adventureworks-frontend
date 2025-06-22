@@ -101,23 +101,7 @@ import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
         </div>
       </div>
     </div>
-  `,
-  styles: [`
-    .card {
-      transition: transform 0.2s;
-      border: none;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-    
-    .bi {
-      display: inline-block;
-    }
-  `]
+  `
 })
 export class DashboardComponent {
   private router = inject(Router);

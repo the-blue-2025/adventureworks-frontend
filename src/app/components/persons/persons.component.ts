@@ -198,42 +198,7 @@ import { PersonFormComponent } from './person-form.component';
         (cancel)="closeModal(modal)"
       ></app-person-form>
     </ng-template>
-  `,
-  styles: [`
-    .table th {
-      white-space: nowrap;
-    }
-    
-    .btn-group .btn {
-      margin-right: 2px;
-    }
-    
-    .btn-group .btn:last-child {
-      margin-right: 0;
-    }
-    
-    .sortable {
-      cursor: pointer;
-      user-select: none;
-    }
-    
-    .sortable:hover {
-      background-color: rgba(0, 0, 0, 0.1);
-    }
-    
-    .badge {
-      font-size: 0.75em;
-    }
-    
-    .table-responsive {
-      border-radius: 0.375rem;
-      overflow: hidden;
-    }
-    
-    .table tbody tr:hover {
-      background-color: rgba(0, 123, 255, 0.05);
-    }
-  `]
+  `
 })
 export class PersonsComponent implements OnInit {
   private modalService = inject(NgbModal);
