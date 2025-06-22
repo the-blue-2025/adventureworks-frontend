@@ -8,20 +8,57 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
   selector: 'app-person-form',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
+  styles: [`
+    .readonly-form .form-control[readonly],
+    .readonly-form .form-select:disabled,
+    .readonly-form .form-control:disabled,
+    .readonly-form .form-select[disabled] {
+      background-color: #f8f9fa !important;
+      border-color: #dee2e6 !important;
+      color: #495057 !important;
+      cursor: not-allowed !important;
+      opacity: 0.8 !important;
+      pointer-events: none !important;
+    }
+    
+    .readonly-form .form-select:disabled,
+    .readonly-form .form-select[disabled] {
+      background-image: none !important;
+      user-select: none !important;
+    }
+    
+    .readonly-form .form-select:disabled:focus,
+    .readonly-form .form-select[disabled]:focus {
+      box-shadow: none !important;
+      border-color: #dee2e6 !important;
+      outline: none !important;
+    }
+    
+    .readonly-form .form-check-input:disabled {
+      opacity: 0.6 !important;
+      cursor: not-allowed !important;
+      pointer-events: none !important;
+    }
+    
+    .readonly-form .form-label {
+      font-weight: 600;
+      color: #495057;
+    }
+  `],
   template: `
     <div class="modal-header">
       <h4 class="modal-title">
-        {{ isEditMode() ? 'Edit Person' : 'Create New Person' }}
+        {{ isViewMode() ? 'View Person' : (isEditMode() ? 'Edit Person' : 'Create New Person') }}
       </h4>
       <button type="button" class="btn-close" (click)="onCancel()"></button>
     </div>
 
-    <form [formGroup]="personForm" (ngSubmit)="onSubmit()">
+    <form [formGroup]="personForm" (ngSubmit)="onSubmit()" [class.readonly-form]="isViewMode()">
       <div class="modal-body">
         <div class="row">
           <div class="col-md-6 mb-3">
             <label for="personType" class="form-label">Person Type *</label>
-            <select id="personType" class="form-select" formControlName="personType">
+            <select id="personType" class="form-select" formControlName="personType" [disabled]="isViewMode()">
               <option value="">Select Type</option>
               <option value="EM">Employee</option>
               <option value="SC">Store Contact</option>
@@ -39,14 +76,14 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
 
           <div class="col-md-6 mb-3">
             <label for="title" class="form-label">Title</label>
-            <input type="text" id="title" class="form-control" formControlName="title" placeholder="Mr., Ms., Dr., etc.">
+            <input type="text" id="title" class="form-control" formControlName="title" placeholder="Mr., Ms., Dr., etc." [readonly]="isViewMode()">
           </div>
         </div>
 
         <div class="row">
           <div class="col-md-4 mb-3">
             <label for="firstName" class="form-label">First Name *</label>
-            <input type="text" id="firstName" class="form-control" formControlName="firstName" placeholder="First Name">
+            <input type="text" id="firstName" class="form-control" formControlName="firstName" placeholder="First Name" [readonly]="isViewMode()">
             @if (personForm.get('firstName')?.invalid && personForm.get('firstName')?.touched) {
               <div class="text-danger">
                 First name is required
@@ -56,12 +93,12 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
 
           <div class="col-md-4 mb-3">
             <label for="middleName" class="form-label">Middle Name</label>
-            <input type="text" id="middleName" class="form-control" formControlName="middleName" placeholder="Middle Name">
+            <input type="text" id="middleName" class="form-control" formControlName="middleName" placeholder="Middle Name" [readonly]="isViewMode()">
           </div>
 
           <div class="col-md-4 mb-3">
             <label for="lastName" class="form-label">Last Name *</label>
-            <input type="text" id="lastName" class="form-control" formControlName="lastName" placeholder="Last Name">
+            <input type="text" id="lastName" class="form-control" formControlName="lastName" placeholder="Last Name" [readonly]="isViewMode()">
             @if (personForm.get('lastName')?.invalid && personForm.get('lastName')?.touched) {
               <div class="text-danger">
                 Last name is required
@@ -73,12 +110,12 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
         <div class="row">
           <div class="col-md-6 mb-3">
             <label for="suffix" class="form-label">Suffix</label>
-            <input type="text" id="suffix" class="form-control" formControlName="suffix" placeholder="Jr., Sr., III, etc.">
+            <input type="text" id="suffix" class="form-control" formControlName="suffix" placeholder="Jr., Sr., III, etc." [readonly]="isViewMode()">
           </div>
 
           <div class="col-md-6 mb-3">
             <label for="emailPromotion" class="form-label">Email Promotion</label>
-            <select id="emailPromotion" class="form-select" formControlName="emailPromotion">
+            <select id="emailPromotion" class="form-select" formControlName="emailPromotion" [disabled]="isViewMode()">
               <option value="0">No</option>
               <option value="1">Yes</option>
               <option value="2">Yes (Partner)</option>
@@ -89,7 +126,7 @@ import { PersonDto, CreatePersonDto, UpdatePersonDto } from '../../models/person
         <div class="row">
           <div class="col-12 mb-3">
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="nameStyle" formControlName="nameStyle">
+              <input class="form-check-input" type="checkbox" id="nameStyle" formControlName="nameStyle" [disabled]="isViewMode()">
               <label class="form-check-label" for="nameStyle">
                 Western Name Style (First Last)
               </label>
@@ -139,6 +176,9 @@ export class PersonFormComponent implements OnInit {
   @Input() set person(value: PersonDto | null) {
     this.personSignal.set(value);
   }
+  @Input() set viewMode(value: boolean) {
+    this.viewModeSignal.set(value);
+  }
   @Output() save = new EventEmitter<PersonDto>();
   @Output() cancel = new EventEmitter<void>();
 
@@ -147,6 +187,7 @@ export class PersonFormComponent implements OnInit {
 
   // Reactive signals
   personSignal = signal<PersonDto | null>(null);
+  viewModeSignal = signal(false);
   isSubmitting = signal(false);
 
   personForm = this.fb.group({
@@ -161,8 +202,8 @@ export class PersonFormComponent implements OnInit {
   });
 
   // Computed signals for reactive UI
-  isEditMode = computed(() => !!this.personSignal());
-  isViewMode = computed(() => false); // You can add logic to determine view mode if needed
+  isEditMode = computed(() => !!this.personSignal() && !this.viewModeSignal());
+  isViewMode = computed(() => this.viewModeSignal());
 
   formErrors = computed(() => {
     const errors: string[] = [];
@@ -222,6 +263,16 @@ export class PersonFormComponent implements OnInit {
           emailPromotion: 0,
           nameStyle: true
         });
+      }
+    });
+
+    // Disable/enable form controls based on view mode
+    effect(() => {
+      const isView = this.viewModeSignal();
+      if (isView) {
+        this.personForm.disable();
+      } else {
+        this.personForm.enable();
       }
     });
   }

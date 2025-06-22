@@ -194,6 +194,7 @@ import { PersonFormComponent } from './person-form.component';
     <ng-template #personModal let-modal>
       <app-person-form
         [person]="selectedPerson()"
+        [viewMode]="viewMode()"
         (save)="onPersonSaved($event, modal)"
         (cancel)="closeModal(modal)"
       ></app-person-form>
@@ -208,6 +209,7 @@ export class PersonsComponent implements OnInit {
   searchQuery = signal('');
   selectedPersonType = signal('');
   selectedPerson = signal<PersonDto | null>(null);
+  viewMode = signal(false);
 
   // Pagination signals
   currentPage = signal(1);
@@ -311,17 +313,20 @@ export class PersonsComponent implements OnInit {
 
   openCreateModal(): void {
     this.selectedPerson.set(null);
+    this.viewMode.set(false);
     this.modalService.open(this.personModal, { size: 'lg' });
   }
 
   viewPerson(person: PersonDto): void {
     this.selectedPerson.set(person);
+    this.viewMode.set(true);
     this.personService.selectPerson(person.businessEntityId);
     this.modalService.open(this.personModal, { size: 'lg' });
   }
 
   editPerson(person: PersonDto): void {
     this.selectedPerson.set(person);
+    this.viewMode.set(false);
     this.personService.selectPerson(person.businessEntityId);
     this.modalService.open(this.personModal, { size: 'lg' });
   }
