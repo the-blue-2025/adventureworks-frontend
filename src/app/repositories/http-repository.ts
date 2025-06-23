@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError, catchError, retry, timeout, shareReplay } from 'rxjs';
+import { Observable, throwError, catchError, retry, timeout } from 'rxjs';
 
 export interface HttpOptions {
   headers?: HttpHeaders;
@@ -18,32 +18,17 @@ export class HttpRepository {
   private readonly defaultTimeout = 30000; // 30 seconds
   private readonly defaultRetryCount = 3;
 
-  // Cache for GET requests to improve performance
-  private readonly cache = new Map<string, Observable<any>>();
-
   get<T>(endpoint: string, options: HttpOptions = {}): Observable<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const cacheKey = this.generateCacheKey('GET', url, options.params);
-
-    // Return cached response if available
-    if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey)!;
-    }
-
-    const request$ = this.http.get<T>(url, {
+    
+    return this.http.get<T>(url, {
       headers: options.headers,
       params: options.params
     }).pipe(
       timeout(options.timeout || this.defaultTimeout),
       retry(options.retryCount || this.defaultRetryCount),
-      catchError(this.handleError),
-      shareReplay(1) // Cache the response
+      catchError(this.handleError)
     );
-
-    // Cache the request
-    this.cache.set(cacheKey, request$);
-    
-    return request$;
   }
 
   post<T>(endpoint: string, data: any, options: HttpOptions = {}): Observable<T> {
@@ -95,21 +80,6 @@ export class HttpRepository {
     );
   }
 
-  // Method to clear cache for specific endpoint or all cache
-  clearCache(endpoint?: string): void {
-    if (endpoint) {
-      const keysToDelete = Array.from(this.cache.keys()).filter(key => key.includes(endpoint));
-      keysToDelete.forEach(key => this.cache.delete(key));
-    } else {
-      this.cache.clear();
-    }
-  }
-
-  // Method to invalidate cache for specific endpoint
-  invalidateCache(endpoint: string): void {
-    this.clearCache(endpoint);
-  }
-
   // Helper method to create HttpParams from object
   createParams(params: Record<string, any>): HttpParams {
     let httpParams = new HttpParams();
@@ -133,11 +103,6 @@ export class HttpRepository {
     });
     
     return httpHeaders;
-  }
-
-  private generateCacheKey(method: string, url: string, params?: HttpParams): string {
-    const paramsString = params ? params.toString() : '';
-    return `${method}:${url}:${paramsString}`;
   }
 
   private handleError(error: HttpErrorResponse): Observable<never> {

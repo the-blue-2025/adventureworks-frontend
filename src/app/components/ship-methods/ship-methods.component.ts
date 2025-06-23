@@ -73,6 +73,7 @@ import { ShipMethodDto, CreateShipMethodDto, UpdateShipMethodDto } from '../../m
             <th>Base Rate</th>
             <th>Rate</th>
             <th>Total Rate</th>
+            <th>Active</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -128,6 +129,16 @@ import { ShipMethodDto, CreateShipMethodDto, UpdateShipMethodDto } from '../../m
               </span>
             </td>
             <td>
+              <div class="form-check d-flex justify-content-center">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  formControlName="isActive"
+                  id="newIsActive"
+                >
+              </div>
+            </td>
+            <td>
               <div class="btn-group" role="group">
                 <button class="btn btn-sm btn-success" (click)="saveNewShipMethod()" [disabled]="shipMethodForm.invalid || isSubmitting">
                   <i class="bi bi-check"></i>
@@ -140,77 +151,79 @@ import { ShipMethodDto, CreateShipMethodDto, UpdateShipMethodDto } from '../../m
           </tr>
 
           <!-- Existing Ship Method Rows -->
-          <tr *ngFor="let shipMethod of shipMethodService.shipMethods()" [class.table-warning]="editingShipMethodId() === shipMethod.shipMethodId">
+          <tr *ngFor="let shipMethod of shipMethodService.shipMethods(); trackBy: trackByShipMethodId" [class.table-warning]="editingShipMethodId() === shipMethod.shipMethodId">
             <td>{{ shipMethod.shipMethodId }}</td>
-            <td>
-              <!-- View Mode -->
-              <strong *ngIf="editingShipMethodId() !== shipMethod.shipMethodId">{{ shipMethod.name }}</strong>
-              <!-- Edit Mode -->
-              <div *ngIf="editingShipMethodId() === shipMethod.shipMethodId">
-                <input 
-                  type="text" 
-                  class="form-control form-control-sm" 
-                  placeholder="Ship Method Name"
-                  formControlName="name"
-                  [class.is-invalid]="shipMethodForm.get('name')?.invalid && shipMethodForm.get('name')?.touched"
-                >
-                <div *ngIf="shipMethodForm.get('name')?.invalid && shipMethodForm.get('name')?.touched" class="text-danger small">
-                  Name is required
-                </div>
+            <ng-container *ngIf="editingShipMethodId() === shipMethod.shipMethodId; else viewRow">
+              <div [formGroup]="getEditingForm(shipMethod.shipMethodId)" style="display: contents;">
+                <td>
+                  <input type="text" class="form-control form-control-sm" placeholder="Ship Method Name"
+                    formControlName="name"
+                    [class.is-invalid]="getEditingForm(shipMethod.shipMethodId).get('name')?.invalid && getEditingForm(shipMethod.shipMethodId).get('name')?.touched">
+                  <div *ngIf="getEditingForm(shipMethod.shipMethodId).get('name')?.invalid && getEditingForm(shipMethod.shipMethodId).get('name')?.touched" class="text-danger small">
+                    Name is required
+                  </div>
+                </td>
+                <td>
+                  <input type="number" class="form-control form-control-sm" placeholder="0.00" step="0.01" min="0"
+                    formControlName="shipBase"
+                    [class.is-invalid]="getEditingForm(shipMethod.shipMethodId).get('shipBase')?.invalid && getEditingForm(shipMethod.shipMethodId).get('shipBase')?.touched">
+                  <div *ngIf="getEditingForm(shipMethod.shipMethodId).get('shipBase')?.invalid && getEditingForm(shipMethod.shipMethodId).get('shipBase')?.touched" class="text-danger small">
+                    Required, min 0
+                  </div>
+                </td>
+                <td>
+                  <input type="number" class="form-control form-control-sm" placeholder="0.00" step="0.01" min="0"
+                    formControlName="shipRate"
+                    [class.is-invalid]="getEditingForm(shipMethod.shipMethodId).get('shipRate')?.invalid && getEditingForm(shipMethod.shipMethodId).get('shipRate')?.touched">
+                  <div *ngIf="getEditingForm(shipMethod.shipMethodId).get('shipRate')?.invalid && getEditingForm(shipMethod.shipMethodId).get('shipRate')?.touched" class="text-danger small">
+                    Required, min 0
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-success">
+                    {{ (getEditingForm(shipMethod.shipMethodId).get('shipBase')?.value || 0) + (getEditingForm(shipMethod.shipMethodId).get('shipRate')?.value || 0) | currency }}
+                  </span>
+                </td>
+                <td>
+                  <div class="form-check d-flex justify-content-center">
+                    <input class="form-check-input" type="checkbox" formControlName="isActive" [id]="'isActive' + shipMethod.shipMethodId">
+                  </div>
+                </td>
+                <td>
+                  <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-success" (click)="saveShipMethod(shipMethod)" [disabled]="getEditingForm(shipMethod.shipMethodId).invalid || isSubmitting">
+                      <i class="bi bi-check"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" (click)="cancelEdit()">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                </td>
               </div>
-            </td>
-            <td>
-              <!-- View Mode -->
-              <span *ngIf="editingShipMethodId() !== shipMethod.shipMethodId" class="badge bg-info">{{ shipMethod.shipBase | currency }}</span>
-              <!-- Edit Mode -->
-              <div *ngIf="editingShipMethodId() === shipMethod.shipMethodId">
-                <input 
-                  type="number" 
-                  class="form-control form-control-sm" 
-                  placeholder="0.00" 
-                  step="0.01" 
-                  min="0"
-                  formControlName="shipBase"
-                  [class.is-invalid]="shipMethodForm.get('shipBase')?.invalid && shipMethodForm.get('shipBase')?.touched"
-                >
-                <div *ngIf="shipMethodForm.get('shipBase')?.invalid && shipMethodForm.get('shipBase')?.touched" class="text-danger small">
-                  Required, min 0
+            </ng-container>
+            <ng-template #viewRow>
+              <td>
+                <strong>{{ shipMethod.name }}</strong>
+              </td>
+              <td>
+                <span class="badge bg-info">{{ shipMethod.shipBase | currency }}</span>
+              </td>
+              <td>
+                <span class="badge bg-secondary">{{ shipMethod.shipRate | currency }}</span>
+              </td>
+              <td>
+                <span class="badge bg-success">{{ getTotalRate(shipMethod) | currency }}</span>
+              </td>
+              <td>
+                <div class="d-flex justify-content-center">
+                  <span class="badge" [ngClass]="shipMethod.isActive ? 'bg-success' : 'bg-secondary'">
+                    <i class="bi" [ngClass]="shipMethod.isActive ? 'bi-check-circle' : 'bi-x-circle'"></i>
+                    {{ shipMethod.isActive ? 'Active' : 'Inactive' }}
+                  </span>
                 </div>
-              </div>
-            </td>
-            <td>
-              <!-- View Mode -->
-              <span *ngIf="editingShipMethodId() !== shipMethod.shipMethodId" class="badge bg-secondary">{{ shipMethod.shipRate | currency }}</span>
-              <!-- Edit Mode -->
-              <div *ngIf="editingShipMethodId() === shipMethod.shipMethodId">
-                <input 
-                  type="number" 
-                  class="form-control form-control-sm" 
-                  placeholder="0.00" 
-                  step="0.01" 
-                  min="0"
-                  formControlName="shipRate"
-                  [class.is-invalid]="shipMethodForm.get('shipRate')?.invalid && shipMethodForm.get('shipRate')?.touched"
-                >
-                <div *ngIf="shipMethodForm.get('shipRate')?.invalid && shipMethodForm.get('shipRate')?.touched" class="text-danger small">
-                  Required, min 0
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="badge bg-success">
-                <ng-container *ngIf="editingShipMethodId() === shipMethod.shipMethodId; else viewTotal">
-                  {{ (shipMethodForm.get('shipBase')?.value || 0) + (shipMethodForm.get('shipRate')?.value || 0) | currency }}
-                </ng-container>
-                <ng-template #viewTotal>
-                  {{ getTotalRate(shipMethod) | currency }}
-                </ng-template>
-              </span>
-            </td>
-            <td>
-              <div class="btn-group" role="group">
-                <!-- View Mode Actions -->
-                <div *ngIf="editingShipMethodId() !== shipMethod.shipMethodId">
+              </td>
+              <td>
+                <div class="btn-group" role="group">
                   <button class="btn btn-sm btn-outline-warning" (click)="editShipMethod(shipMethod)">
                     <i class="bi bi-pencil"></i>
                   </button>
@@ -218,17 +231,8 @@ import { ShipMethodDto, CreateShipMethodDto, UpdateShipMethodDto } from '../../m
                     <i class="bi bi-trash"></i>
                   </button>
                 </div>
-                <!-- Edit Mode Actions -->
-                <div *ngIf="editingShipMethodId() === shipMethod.shipMethodId">
-                  <button class="btn btn-sm btn-success" (click)="saveShipMethod(shipMethod)" [disabled]="shipMethodForm.invalid || isSubmitting">
-                    <i class="bi bi-check"></i>
-                  </button>
-                  <button class="btn btn-sm btn-danger" (click)="cancelEdit()">
-                    <i class="bi bi-x"></i>
-                  </button>
-                </div>
-              </div>
-            </td>
+              </td>
+            </ng-template>
           </tr>
         </tbody>
       </table>
@@ -244,6 +248,7 @@ export class ShipMethodsComponent implements OnInit {
   isAddingNew = false;
   isSubmitting = false;
   shipMethodForm!: FormGroup;
+  editingForms = new Map<number, FormGroup>();
 
   ngOnInit(): void {
     this.initForm();
@@ -254,7 +259,21 @@ export class ShipMethodsComponent implements OnInit {
       name: ['', Validators.required],
       shipBase: ['', [Validators.required, Validators.min(0)]],
       shipRate: ['', [Validators.required, Validators.min(0)]],
+      isActive: [true],
     });
+  }
+
+  private createEditingForm(shipMethod: ShipMethodDto): FormGroup {
+    return this.fb.group({
+      name: [shipMethod.name, Validators.required],
+      shipBase: [shipMethod.shipBase, [Validators.required, Validators.min(0)]],
+      shipRate: [shipMethod.shipRate, [Validators.required, Validators.min(0)]],
+      isActive: [shipMethod.isActive],
+    });
+  }
+
+  getEditingForm(shipMethodId: number): FormGroup {
+    return this.editingForms.get(shipMethodId) as FormGroup;
   }
 
   onSearch(): void {
@@ -277,13 +296,10 @@ export class ShipMethodsComponent implements OnInit {
   }
 
   editShipMethod(shipMethod: ShipMethodDto): void {
-    this.editingShipMethodId.set(shipMethod.shipMethodId);
+    const form = this.createEditingForm(shipMethod);
+    this.editingForms.set(shipMethod.shipMethodId, form);
     this.isAddingNew = false;
-    this.shipMethodForm.patchValue({
-      name: shipMethod.name,
-      shipBase: shipMethod.shipBase,
-      shipRate: shipMethod.shipRate
-    });
+    this.editingShipMethodId.set(shipMethod.shipMethodId);
   }
 
   async saveNewShipMethod(): Promise<void> {
@@ -307,14 +323,15 @@ export class ShipMethodsComponent implements OnInit {
   }
 
   async saveShipMethod(shipMethod: ShipMethodDto): Promise<void> {
-    if (this.shipMethodForm.invalid) {
+    const editingForm = this.getEditingForm(shipMethod.shipMethodId);
+    if (editingForm.invalid) {
       return;
     }
 
     this.isSubmitting = true;
 
     try {
-      const updateData: UpdateShipMethodDto = this.shipMethodForm.value;
+      const updateData: UpdateShipMethodDto = editingForm.value;
       await this.shipMethodService.updateShipMethod(shipMethod.shipMethodId, updateData);
       this.cancelEdit();
       this.reload();
@@ -332,8 +349,11 @@ export class ShipMethodsComponent implements OnInit {
   }
 
   cancelEdit(): void {
+    const editingId = this.editingShipMethodId();
+    if (editingId) {
+      this.editingForms.delete(editingId);
+    }
     this.editingShipMethodId.set(null);
-    this.shipMethodForm.reset();
   }
 
   async deleteShipMethod(shipMethod: ShipMethodDto): Promise<void> {
@@ -353,5 +373,9 @@ export class ShipMethodsComponent implements OnInit {
       return shipMethod.shipBase + shipMethod.shipRate;
     }
     return null;
+  }
+
+  trackByShipMethodId(index: number, shipMethod: ShipMethodDto): number {
+    return shipMethod.shipMethodId;
   }
 } 
