@@ -73,7 +73,7 @@ import { ShipMethodDto, CreateShipMethodDto, UpdateShipMethodDto } from '../../m
             <th>Base Rate</th>
             <th>Rate</th>
             <th>Total Rate</th>
-            <th>Active</th>
+            <th class="text-center">Active</th>
             <th>Actions</th>
           </tr>
         </thead>

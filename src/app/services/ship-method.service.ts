@@ -12,6 +12,7 @@ interface ShipMethodsRequest {
 })
 export class ShipMethodService {
   private httpRepository = inject(HttpRepository);
+  private readonly endpoint = '/ship-methods';
 
   // Signals for reactive parameters
   private searchQuerySignal = signal<string>('');
@@ -66,8 +67,8 @@ export class ShipMethodService {
 
     try {
       const endpoint = searchQuery 
-        ? `/ship-methods/search?q=${searchQuery}`
-        : '/ship-methods';
+        ? `${this.endpoint}/search?q=${searchQuery}`
+        : this.endpoint;
       const methods = await firstValueFrom(this.httpRepository.get<ShipMethodDto[]>(endpoint));
       this.shipMethodsSignal.set(methods || []);
     } catch (err) {
@@ -79,7 +80,7 @@ export class ShipMethodService {
 
   private async loadShipMethodById(id: number): Promise<void> {
     try {
-      const method = await firstValueFrom(this.httpRepository.get<ShipMethodDto>(`/ship-methods/${id}`));
+      const method = await firstValueFrom(this.httpRepository.get<ShipMethodDto>(`${this.endpoint}/${id}`));
       this.selectedShipMethodSignal.set(method || null);
     } catch (err) {
       this.errorSignal.set(err instanceof Error ? err.message : 'Failed to load ship method');
@@ -93,10 +94,8 @@ export class ShipMethodService {
     this.errorSignal.set(null);
 
     try {
-      const newMethod = await firstValueFrom(this.httpRepository.post<ShipMethodDto>('/ship-methods', method));
+      const newMethod = await firstValueFrom(this.httpRepository.post<ShipMethodDto>(this.endpoint, method));
       if (newMethod) {
-        // Add to current list
-        this.shipMethodsSignal.update(methods => [...methods, newMethod]);
         return newMethod;
       }
       throw new Error('Failed to create ship method');
@@ -113,18 +112,8 @@ export class ShipMethodService {
     this.errorSignal.set(null);
 
     try {
-      const updatedMethod = await firstValueFrom(this.httpRepository.put<ShipMethodDto>(`/ship-methods/${id}`, method));
+      const updatedMethod = await firstValueFrom(this.httpRepository.put<ShipMethodDto>(`${this.endpoint}/${id}`, method));
       if (updatedMethod) {
-        // Update in current list
-        this.shipMethodsSignal.update(methods => 
-          methods.map(m => m.shipMethodId === id ? updatedMethod : m)
-        );
-        
-        // Update selected method if it's the one being edited
-        if (this.selectedShipMethodId() === id) {
-          this.selectedShipMethodSignal.set(updatedMethod);
-        }
-        
         return updatedMethod;
       }
       throw new Error('Failed to update ship method');
@@ -141,17 +130,7 @@ export class ShipMethodService {
     this.errorSignal.set(null);
 
     try {
-      await firstValueFrom(this.httpRepository.delete<void>(`/ship-methods/${id}`));
-      
-      // Remove from current list
-      this.shipMethodsSignal.update(methods => 
-        methods.filter(m => m.shipMethodId !== id)
-      );
-      
-      // Clear selection if it's the deleted method
-      if (this.selectedShipMethodId() === id) {
-        this.selectShipMethod(null);
-      }
+      await firstValueFrom(this.httpRepository.delete<void>(`${this.endpoint}/${id}`));
     } catch (err) {
       this.errorSignal.set(err instanceof Error ? err.message : 'Failed to delete ship method');
       throw err;
