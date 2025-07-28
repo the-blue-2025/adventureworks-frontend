@@ -14,12 +14,13 @@ export interface HttpOptions {
 })
 export class HttpRepository {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:3000/api'; // Adjust port as needed
+  private readonly baseUrl = 'http://localhost:3000/api/v1'; // Adjust port as needed
   private readonly defaultTimeout = 30000; // 30 seconds
   private readonly defaultRetryCount = 3;
 
   get<T>(endpoint: string, options: HttpOptions = {}): Observable<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    console.log('Making GET request to:', url, 'with options:', options);
     
     return this.http.get<T>(url, {
       headers: options.headers,
@@ -146,12 +147,14 @@ export class HttpRepository {
       }
     }
 
-    console.error('HTTP Error:', {
+    console.error('HTTP Error Details:', {
       status: error.status,
       statusText: error.statusText,
       url: error.url,
       message: errorMessage,
-      error: error.error
+      error: error.error,
+      headers: error.headers,
+      name: error.name
     });
 
     return throwError(() => new Error(errorMessage));

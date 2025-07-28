@@ -40,6 +40,24 @@ export const serverRoutes: ServerRoute[] = [
     getPrerenderParams: () => Promise.resolve([])
   },
   {
+    path: 'sales-orders',
+    renderMode: RenderMode.Prerender
+  },
+  {
+    path: 'sales-orders/create',
+    renderMode: RenderMode.Prerender
+  },
+  {
+    path: 'sales-orders/:id/edit',
+    renderMode: RenderMode.Prerender,
+    getPrerenderParams: () => Promise.resolve([])
+  },
+  {
+    path: 'sales-orders/:id/details',
+    renderMode: RenderMode.Prerender,
+    getPrerenderParams: () => Promise.resolve([])
+  },
+  {
     path: '**',
     renderMode: RenderMode.Prerender
   }

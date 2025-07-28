@@ -66,6 +66,19 @@ import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
           </div>
         </div>
       </div>
+
+      <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center h-100">
+          <div class="card-body">
+            <i class="bi bi-cart-check-fill fs-1 text-primary mb-3"></i>
+            <h5 class="card-title">Sales Orders</h5>
+            <p class="card-text">Manage sales orders and details</p>
+            <button class="btn btn-primary" (click)="navigateTo('/sales-orders')">
+              Manage Sales Orders
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="row mt-4">
@@ -94,6 +107,11 @@ import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
               <div class="col-md-3 mb-2">
                 <button class="btn btn-outline-info w-100" (click)="navigateTo('/purchase-orders')">
                   <i class="bi bi-plus-circle"></i> Add Purchase Order
+                </button>
+              </div>
+              <div class="col-md-3 mb-2">
+                <button class="btn btn-outline-primary w-100" (click)="navigateTo('/sales-orders')">
+                  <i class="bi bi-plus-circle"></i> Add Sales Order
                 </button>
               </div>
             </div>
